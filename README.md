@@ -1,2 +1,2 @@
-# ambilight-project
-Projeto ambilight - Smart LED
+# ambilight-core
+Projeto core - Smart LED
