@@ -1,8 +1,8 @@
 /****************************************Informação do Arquivo*************************************************
-** Nome do Arquivo:          projeto_curandeiro.ino versão: 8.
-** Data Ultima Modificação:  22-02-18
+** Nome do Arquivo:          projeto_smartleds.ino versão: 1.
+** Data Ultima Modificação:  05-12-21
 ** Ultima Versão:            Sim
-** Descrição:                Software controlador do sistema da máquina "Curandeiro".
+** Descrição:                Software controlador dos leds SmartLeds.
 **------------------------------------------------------------------------------------------------------
 ** Criado por:          Marlon Zanardi <marlon.zanardi95@hotmail.com>
 ** Data de Criação:     22-12-18       
@@ -26,7 +26,7 @@
 #include "Display.h"
 
 /* Definição de versão do software e hardware. */
-#define V_SFT "1.03"
+#define V_SFT "1.06"
 #define V_HDW 1
 
 /* Debug Serial. */
@@ -73,7 +73,7 @@
 
 // --- General Settings
 const uint16_t 
-  Num_Leds   =  114;         // strip length
+  Num_Leds   =  126;         // strip length
 const uint8_t
   Brightness =  255;        // maximum brightness
 
@@ -166,6 +166,10 @@ void timeouts();
 #endif
 
 /* Variáveis */
+byte leds_top = 0;
+byte leds_bot = 0;
+byte leds_left = 0;
+byte leds_right = 0;
 // Bluetooth serial protocol
 bool bluetooth_connected = 0;
 String comando;
@@ -238,6 +242,11 @@ Buzzer buzzer(PINO_BUZZER,DELAY_BUZZER);
 *********************************************************************************************************/
 void inicia_leds()
 {
+  leds_top = EEPROM.read(1);
+  leds_bot = EEPROM.read(2);
+  leds_left = EEPROM.read(3);
+  leds_right = EEPROM.read(4);
+  
   for(int i = 0; i < Num_Leds; i++) 
   {       
     // let's set an led value
@@ -369,7 +378,6 @@ void setup()
   inicializacao();   
   // Inicializa os leds
   inicia_leds();  
-  
   // Debug
   Serial.println("Sistema iniciado com sucesso.");
 }
@@ -699,6 +707,16 @@ void serialEvent()
   }
 }
 
+void desliga_leds()
+{
+  for(int i = 0; i < Num_Leds; i++) 
+  {      
+    // let's set an led value
+    leds[i] = CRGB::Black;          
+  }
+  FastLED.show();
+}
+
 // Tarefa do bluetooth
 void task_bluetooth()
 {
@@ -717,7 +735,7 @@ void task_bluetooth()
       inicia_leds();
       // Bluetooth conectado.
       bluetooth_connected = 1;
-
+      
       Serial3.println("GET_STATUS 1 2 3 4");
     }
 
@@ -754,119 +772,60 @@ void task_bluetooth()
         // Bluetooth conectado.
         bluetooh_connected_leds();
         inicia_leds();
-        for(int i = 0; i < Num_Leds; i++) 
-        {      
-          // let's set an led value
-          leds[i] = CRGB::Black;          
-        }
-        FastLED.show();
+        desliga_leds();
       }
     }
+
+    // Seta o modo do ambilight.
+    if ( comando.startsWith(F("SET_PARAMS")) )   
+    {
+      String top_str = get_indice_str(comando, 1);
+      String bot_str = get_indice_str(comando, 2);
+      String left_str = get_indice_str(comando, 3);
+      String right_str = get_indice_str(comando, 4);
+      leds_top = top_str.toInt();
+      leds_bot = bot_str.toInt();
+      leds_left = left_str.toInt();
+      leds_right = right_str.toInt();
+      EEPROM.write(1,leds_top);
+      EEPROM.write(2,leds_bot);
+      EEPROM.write(3,leds_left);
+      EEPROM.write(4,leds_right);      
+    }
+
+    // Seta o modo do ambilight.
+    if ( comando.startsWith(F("LED_ON")) )   
+    {
+      String led_str = get_indice_str(comando, 1);
+      int num_led = led_str.toInt();
+      desliga_leds();
+      leds[num_led] = CRGB::White;  
+      FastLED.show();
+    }   
+
+    // Seta o modo do ambilight.
+    if ( comando.startsWith(F("DESLIGA_LEDS")) )   
+    {
+      desliga_leds();
+    }    
     
     // Limpa a string:
     comando = "";
     stringComplete = false;
   }
-  /*// Verifica se existe algum dado a ser lido da porta do bluetooth.
-  if ( Serial3.available() )
-  {
-      // Registra valor lido na variavel c.
-      char e = Serial3.read();
-      
-      // Serial de debug
-      #ifdef DEBUG
-      //Serial.print(F("Dado Bluetooth: "));      
-      //Serial.println(c);
-      #endif
-      
-      // Se recebeu o dado referente a ligar a lampada.
-      if ( e == 's' )  
-      {  
-         //Serial.println("Bluetooth Conectado!"); 
-         // Seta variavel bluetooth conectado como ativo.
-         bluetooth_conectado = 1;
-         // Vai para tela principal.
-        estado_operacao = MENU_PRINCIPAL;
-      } 
-
-      // Se recebeu o dado referente a ligar a lampada.
-      if ( e == 'l' )  
-      {  
-        // Liga luz.
-        liga_luz();
-        // Inicia contador de luz acesa.
-        time_start_luz = millis();
-      }       
-
-      // Se recebeu o dado referente a desligar a lampada.
-      if ( e == 'd' )    
-      { 
-        // Desliga luz.
-        desliga_luz();
-      }  
-
-      // Se recebeu o dado referente a ligar a lampada.
-      if ( e == 'z' )  
-      {  
-        // Liga luz.
-        liga_luz();
-        // Inicia contador de luz acesa.
-        time_start_luz = millis();
-      }       
-
-      // Se recebeu o dado referente a desligar a lampada.
-      if ( e == 'x' )    
-      { 
-        // Desliga luz.
-        desliga_luz();
-      }  
-
-      // Se recebeu o dado referente a ativo sensor presença.
-      if ( e == 'k' )  
-      { 
-        // Liga o led ultrassom.
-        liga_led_ultrassom();
-      }
-
-      // Se recebeu o dado referente a ativo sensor presença.
-      if ( e == 'j' )  
-      { 
-        // desliga o led ultrassom.
-        desliga_led_ultrassom();
-
-      if ( e == 't' )  
-      { 
-        // Liga luz.
-        liga_led_tv();
-      }
-      if ( e == 'v' )  
-      { 
-        // Liga luz.
-        desliga_led_tv();
-      }
-      if ( e == 'b' )  
-      { 
-        // Liga luz.
-        liga_lamp_trofeu();
-      }
-      if ( e == 'f' )  
-      { 
-        // Liga luz.
-        desliga_lamp_trofeu();
-      }
-      
-      
-  }      */
-
- /* // Le da porta serial e envia para o bluetooth.
-  if ( Serial.available() )
-  {
-      e = Serial.read();
-      Serial3.write(e);   
-      Serial.write(e);
-      Serial.println("");
-  }*/
 }
+
+/*
+delay(100);
+while(1)
+{
+  desliga_leds();
+  delay(500);
+  leds[25] = CRGB::White;  
+  FastLED.show();
+  delay(500);
+}*/
+
 
 /*********************************************************************************************************
 ** Nome da Função:       task_ambilight
@@ -1244,7 +1203,15 @@ void timeouts(){
   // No data received. If this persists, send an ACK packet
   // to host once every second to alert it to our presence.
   if((t - lastAckTime) >= 1000) {
-    Serial.print("Ada\n"); // Send ACK string to host
+    Serial.print("Ada ");
+    Serial.print(leds_top);
+    Serial.print(" ");
+    Serial.print(leds_bot);
+    Serial.print(" ");
+    Serial.print(leds_left);
+    Serial.print(" ");
+    Serial.print(leds_right);
+    Serial.print("\n");
     lastAckTime = t; // Reset counter
 
     // If no data received for an extended time, turn off all LEDs.
