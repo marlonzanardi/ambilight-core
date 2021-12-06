@@ -241,12 +241,7 @@ Buzzer buzzer(PINO_BUZZER,DELAY_BUZZER);
 ** Valor de retorno:     Não.
 *********************************************************************************************************/
 void inicia_leds()
-{
-  leds_top = EEPROM.read(1);
-  leds_bot = EEPROM.read(2);
-  leds_left = EEPROM.read(3);
-  leds_right = EEPROM.read(4);
-  
+{  
   for(int i = 0; i < Num_Leds; i++) 
   {       
     // let's set an led value
@@ -359,6 +354,14 @@ void bluetooh_connected_leds()
   }
   FastLED.show();
 }
+
+void inicia_eeprom()
+{  
+  leds_top = EEPROM.read(1);
+  leds_bot = EEPROM.read(2);
+  leds_left = EEPROM.read(3);
+  leds_right = EEPROM.read(4);
+}
 /*********************************************************************************************************
 ** Nome da Função:       setup
 ** Descrição:            Setup principal da main, onde é feita a inicialização das portas seriais/pinos/
@@ -378,6 +381,7 @@ void setup()
   inicializacao();   
   // Inicializa os leds
   inicia_leds();  
+  inicia_eeprom();
   // Debug
   Serial.println("Sistema iniciado com sucesso.");
 }
@@ -792,6 +796,7 @@ void task_bluetooth()
       EEPROM.write(3,leds_left);
       EEPROM.write(4,leds_right);      
     }
+    
 
     // Seta o modo do ambilight.
     if ( comando.startsWith(F("LED_ON")) )   
