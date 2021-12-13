@@ -802,6 +802,8 @@ void task_bluetooth()
     if ( comando.startsWith(F("LED_ON")) )   
     {
       String led_str = get_indice_str(comando, 1);
+      String type_str = get_indice_str(comando, 2);
+      String timeout_str =  get_indice_str(comando, 3);
       int num_led = led_str.toInt();
       desliga_leds();
       leds[num_led] = CRGB::White;  
